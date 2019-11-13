@@ -5,6 +5,7 @@ namespace A17\Twill\Repositories;
 use A17\Twill\Models\Behaviors\HasMedias;
 use A17\Twill\Models\Behaviors\Sortable;
 use A17\Twill\Repositories\Behaviors\HandleDates;
+use A17\Twill\Repositories\Behaviors\HandleFieldsGroups;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -16,7 +17,7 @@ use PDO;
 
 abstract class ModuleRepository
 {
-    use HandleDates;
+    use HandleDates, HandleFieldsGroups;
 
     /**
      * @var \A17\Twill\Models\Model
@@ -880,7 +881,7 @@ abstract class ModuleRepository
             $model = ucfirst(Str::singular($relation));
         }
 
-        return App::get(Config::get('twill.namespace') . "\\Repositories\\" . ucfirst($model) . "Repository");
+        return App::make(Config::get('twill.namespace') . "\\Repositories\\" . ucfirst($model) . "Repository");
     }
 
     /**
