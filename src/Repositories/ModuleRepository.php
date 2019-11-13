@@ -664,29 +664,17 @@ abstract class ModuleRepository
      * @return array
      */
     public function getFormFieldsForBrowser($object, $relation, $routePrefix = null, $titleKey = 'title', $moduleName = null)
-    {
-        if ($object->$relation instanceof Collection) {
-            return $object->$relation->map(function ($relatedElement) use ($titleKey, $routePrefix, $relation, $moduleName) {
-                return [
-                        'id' => $relatedElement->id,
-                        'name' => $relatedElement->titleInBrowser ?? $relatedElement->$titleKey,
-                        'edit' => moduleRoute($moduleName ?? $relation, $routePrefix ?? '', 'edit', $relatedElement->id),
-                        'endpointType' => $relatedElement->getMorphClass(),
-                    ] + (classHasTrait($relatedElement, HasMedias::class) ? [
-                        'thumbnail' => $relatedElement->defaultCmsImage(['w' => 100, 'h' => 100]),
-                    ] : []);
-            })->toArray();
-        }
-        else {
-            return [[
-                    'id' => $object->$relation->id,
-                    'name' => $object->$relation->titleInBrowser ?? $object->$relation->$titleKey,
-                    'edit' => moduleRoute($moduleName ?? $relation, $routePrefix ?? '', 'edit', $object->$relation->id),
-                    'endpointType' => $object->$relation->getMorphClass(),
-                ] + (classHasTrait($object->$relation, HasMedias::class) ? [
-                    'thumbnail' => $object->$relation->defaultCmsImage(['w' => 100, 'h' => 100]),
-            ] : [])];
-        }
+    {        
+        return $object->$relation->map(function ($relatedElement) use ($titleKey, $routePrefix, $relation, $moduleName) {
+            return [
+                    'id' => $relatedElement->id,
+                    'name' => $relatedElement->titleInBrowser ?? $relatedElement->$titleKey,
+                    'edit' => moduleRoute($moduleName ?? $relation, $routePrefix ?? '', 'edit', $relatedElement->id),
+                    'endpointType' => $relatedElement->getMorphClass(),
+                ] + (classHasTrait($relatedElement, HasMedias::class) ? [
+                    'thumbnail' => $relatedElement->defaultCmsImage(['w' => 100, 'h' => 100]),
+                ] : []);
+        })->toArray();
     }
 
     /**
