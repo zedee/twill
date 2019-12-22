@@ -165,7 +165,7 @@ class DashboardController extends Controller
     {
         $dashboardModule = $this->config->get('twill.dashboard.modules.' . $activity->subject_type);
 
-        if (!$dashboardModule || !$dashboardModule['activity'] ?? false) {
+        if ((!$dashboardModule || !$dashboardModule['activity'] ?? false) && !empty($activity->subject) {
             return null;
         }
 
