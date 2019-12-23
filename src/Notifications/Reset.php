@@ -17,7 +17,7 @@ class Reset extends ResetPassword
     public function toMail($notifiable)
     {
         return (new MailMessage)->markdown('twill::emails.html.email', [
-            'url' => url(request()->getScheme() . '://' . config('twill.admin_app_url') . route('admin.password.reset.form', $this->token, false)),
+            'url' => url(config('twill.admin_app_url') . route('admin.password.reset.form', $this->token, false)),
             'actionText' => Lang::getFromJson('Reset Password Notification'),
             'copy' => Lang::getFromJson('You are receiving this email because we received a password reset request for your account.') .
                 ' ' .
