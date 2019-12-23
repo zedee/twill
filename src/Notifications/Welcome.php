@@ -4,6 +4,7 @@ namespace A17\Twill\Notifications;
 
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Lang;
 
 class Welcome extends ResetPassword
 {
@@ -16,10 +17,10 @@ class Welcome extends ResetPassword
     public function toMail($notifiable)
     {
         return (new MailMessage)->markdown('twill::emails.html.email', [
-            'url' => url(request()->getScheme() . '://' . config('twill.admin_app_url') . route('admin.password.reset.welcome.form', $this->token, false)),
-            'actionText' => 'Choose your own password',
-            'title' => 'Welcome',
-            'copy' => 'You are receiving this email because an account was created for you on ' . config('app.name') . '.',
+            'url' => url(config('twill.admin_app_url') . route('admin.password.reset.welcome.form', $this->token, false)),
+            'actionText' => Lang::getFromJson('Choose your own password'),
+            'title' => Lang::getFromJson('Welcome'),
+            'copy' => Lang::getFromJson('You are receiving this email because an account was created for you on ') . config('app.name') . '.',
         ]);
 
     }
