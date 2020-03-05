@@ -103,7 +103,7 @@ return $searchResults->map(function ($item) use ($module) {
         'date' => $item->updated_at->toIso8601String(),
         'title' => $item->title,
         'author' => $author,
-        'type' => str_singular($module['name']),
+        'type' => Str::singular($module['name']),
     ];
 })->values();
 
@@ -424,7 +424,7 @@ Finally, in your `AuthServiceProvider` class, redefine [Twill's default permissi
                 ]);
             });
 
-        Gate::define('edit', function ($user) {
+            Gate::define('edit', function ($user) {
                 return in_array($user->role_value, [
                     UserRole::CUSTOM3,
                     UserRole::ADMIN,

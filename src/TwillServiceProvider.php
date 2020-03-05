@@ -4,6 +4,7 @@ namespace A17\Twill;
 
 use A17\Twill\Commands\Build;
 use A17\Twill\Commands\CreateSuperAdmin;
+use A17\Twill\Commands\Dev;
 use A17\Twill\Commands\GenerateBlocks;
 use A17\Twill\Commands\Install;
 use A17\Twill\Commands\ModuleMake;
@@ -12,6 +13,7 @@ use A17\Twill\Commands\Update;
 use A17\Twill\Http\ViewComposers\ActiveNavigation;
 use A17\Twill\Http\ViewComposers\CurrentUser;
 use A17\Twill\Http\ViewComposers\FilesUploaderConfig;
+use A17\Twill\Http\ViewComposers\Localization;
 use A17\Twill\Http\ViewComposers\MediasUploaderConfig;
 use A17\Twill\Models\Block;
 use A17\Twill\Models\File;
@@ -19,17 +21,13 @@ use A17\Twill\Models\Media;
 use A17\Twill\Models\User;
 use A17\Twill\Services\FileLibrary\FileService;
 use A17\Twill\Services\MediaLibrary\ImageService;
-use Barryvdh\Debugbar\Facade as Debugbar;
-use Barryvdh\Debugbar\ServiceProvider as DebugbarServiceProvider;
+use Astrotomic\Translatable\TranslatableServiceProvider;
 use Cartalyst\Tags\TagsServiceProvider;
-use Dimsav\Translatable\TranslatableServiceProvider;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
-use Lsrur\Inspector\Facade\Inspector;
-use Lsrur\Inspector\InspectorServiceProvider;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\ActivitylogServiceProvider;
 
 class TwillServiceProvider extends ServiceProvider
@@ -40,7 +38,7 @@ class TwillServiceProvider extends ServiceProvider
      *
      * @var string
      */
-    const VERSION = '1.2.2';
+    const VERSION = '2.0.0';
 
     /**
      * Service providers to be registered.
@@ -53,7 +51,7 @@ class TwillServiceProvider extends ServiceProvider
         ValidationServiceProvider::class,
         TranslatableServiceProvider::class,
         TagsServiceProvider::class,
-        ActivitylogServiceProvider::class
+        ActivitylogServiceProvider::class,
     ];
 
     private $migrationsCounter = 0;
@@ -74,6 +72,7 @@ class TwillServiceProvider extends ServiceProvider
         $this->registerCommands();
 
         $this->registerAndPublishViews();
+        $this->registerAndPublishTranslations();
 
         $this->extendBlade();
         $this->addViewComposers();
@@ -125,14 +124,6 @@ class TwillServiceProvider extends ServiceProvider
             $this->app->register($provider);
         }
 
-        if ($this->app->environment('development', 'local', 'staging')) {
-            if (config('twill.debug.use_inspector', false)) {
-                $this->app->register(InspectorServiceProvider::class);
-            } else {
-                $this->app->register(DebugbarServiceProvider::class);
-            }
-        }
-
         if (config('twill.enabled.media-library')) {
             $this->app->singleton('imageService', function () {
                 return $this->app->make(config('twill.media_library.image_service'));
@@ -154,12 +145,6 @@ class TwillServiceProvider extends ServiceProvider
     private function registerAliases()
     {
         $loader = AliasLoader::getInstance();
-
-        if (config('twill.debug.use_inspector', false)) {
-            $loader->alias('Inspector', Inspector::class);
-        } else {
-            $loader->alias('Debugbar', Debugbar::class);
-        }
 
         if (config('twill.enabled.media-library')) {
             $loader->alias('ImageService', ImageService::class);
@@ -223,86 +208,34 @@ class TwillServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../config/media-library.php', 'twill.media_library');
         $this->mergeConfigFrom(__DIR__ . '/../config/imgix.php', 'twill.imgix');
         $this->mergeConfigFrom(__DIR__ . '/../config/glide.php', 'twill.glide');
-        $this->mergeConfigFrom(__DIR__ . '/../config/cloudfront.php', 'services');
         $this->mergeConfigFrom(__DIR__ . '/../config/dashboard.php', 'twill.dashboard');
+        $this->mergeConfigFrom(__DIR__ . '/../config/oauth.php', 'twill.oauth');
         $this->mergeConfigFrom(__DIR__ . '/../config/disks.php', 'filesystems.disks');
+        $this->mergeConfigFrom(__DIR__ . '/../config/services.php', 'services');
     }
 
-    /**
-     * Defines the package migration files for publishing.
-     *
-     * @return void
-     */
     private function publishMigrations()
     {
-        $migrations = ['CreateTagsTables', 'CreateBlocksTable', 'CreateRelatedTable'];
-
-        $optionalMigrations = [
-            'CreateTwillUsersTables' => 'users-management',
-            'CreateTwillActivityLogTable' => 'activitylog',
-            'CreateFilesTables' => 'file-library',
-            'CreateMediasTables' => 'media-library',
-            'CreateFeaturesTable' => 'buckets',
-            'CreateSettingsTable' => 'settings',
-        ];
-
-        // The updatesMigrations array must include new migrations that should
-        // be applied after minor and patch updates of Twill in a Laravel codebase.
-        // When releasing a major version of Twill, we can move those up into
-        // the optionalMigrations array above and keep this array empty until
-        // a new migration is needed in a non breaking change version.
-        $updatesMigations = [
-            'AddTwoFactorAuthColumnsToTwillUsers' => 'users-2fa',
-            'ChangeLocaleColumnInTwillFileables' => 'file-library',
-            'AddLocaleColumnToTwillMediables' => 'media-library',
-        ];
-
-        if ($this->app->runningInConsole()) {
-            foreach ($migrations as $migration) {
-                $this->publishMigration($migration);
-            }
-
-            foreach ($optionalMigrations as $migration => $feature) {
-                if (config('twill.enabled.' . $feature)) {
-                    $this->publishMigration($migration);
-                }
-            }
-
-            foreach ($updatesMigations as $migration => $feature) {
-                if (config('twill.enabled.' . $feature)) {
-                    $this->publishMigration($migration, 'twill-updates-migrations');
-                }
-            }
+        if (config('twill.load_default_migrations', true)) {
+            $this->loadMigrationsFrom(__DIR__ . '/../migrations/default');
         }
+
+        $this->publishes([
+            __DIR__ . '/../migrations/default' => database_path('migrations'),
+        ], 'migrations');
+
+        $this->publishOptionalMigration('users-2fa');
+        $this->publishOptionalMigration('users-oauth');
     }
 
-    /**
-     * @param string $migration
-     * @return void
-     */
-    private function publishMigration($migration, $publishKey = null)
+    private function publishOptionalMigration($feature)
     {
-        $files = new Filesystem;
-        $this->migrationsCounter += 1;
+        if (config('twill.enabled.' . $feature, false)) {
+            $this->loadMigrationsFrom(__DIR__ . '/../migrations/optional/' . $feature);
 
-        if (!class_exists($migration)) {
-            // Verify that migration doesn't exist
-            $migration_file = database_path('migrations/*_' . snake_case($migration) . '.php');
-            if (empty($files->glob($migration_file))) {
-                $timestamp = date('Y_m_d_', time()) . (30000 + $this->migrationsCounter);
-                $migrationSourcePath = __DIR__ . '/../migrations/' . snake_case($migration) . '.php';
-                $migrationOutputPath = database_path('migrations/' . $timestamp . '_' . snake_case($migration) . '.php');
-
-                $this->publishes([
-                    $migrationSourcePath => $migrationOutputPath,
-                ], 'migrations');
-
-                if ($publishKey) {
-                    $this->publishes([
-                        $migrationSourcePath => $migrationOutputPath,
-                    ], $publishKey);
-                }
-            }
+            $this->publishes([
+                __DIR__ . '/../migrations/optional/' . $feature => database_path('migrations'),
+            ], 'migrations');
         }
     }
 
@@ -340,6 +273,7 @@ class TwillServiceProvider extends ServiceProvider
             GenerateBlocks::class,
             Build::class,
             Update::class,
+            Dev::class,
         ]);
     }
 
@@ -362,7 +296,8 @@ class TwillServiceProvider extends ServiceProvider
         if ($expression === "()") {
             $expression = '([])';
         }
-        return "<?php echo \$__env->make('{$view}', array_except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render(); ?>";
+
+        return "<?php echo \$__env->make('{$view}', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render(); ?>";
     }
 
     /**
@@ -383,11 +318,11 @@ class TwillServiceProvider extends ServiceProvider
                 null != $data ? $data : "get_defined_vars()");
         });
 
-        $blade->directive('formField', function ($expression) use ($blade) {
+        $blade->directive('formField', function ($expression) {
             return $this->includeView('partials.form._', $expression);
         });
 
-        $blade->directive('partialView', function ($expression) use ($blade) {
+        $blade->directive('partialView', function ($expression) {
 
             $expressionAsArray = str_getcsv($expression, ',', '\'');
 
@@ -412,13 +347,13 @@ class TwillServiceProvider extends ServiceProvider
 
             return "<?php
             if( view()->exists($viewModule)) {
-                echo \$__env->make($viewModule, array_except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
+                echo \$__env->make($viewModule, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
             } elseif( view()->exists($viewApplication)) {
-                echo \$__env->make($viewApplication, array_except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
+                echo \$__env->make($viewApplication, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
             } elseif( view()->exists($viewModuleTwill)) {
-                echo \$__env->make($viewModuleTwill, array_except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
+                echo \$__env->make($viewModuleTwill, \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
             } elseif( view()->exists('$view')) {
-                echo \$__env->make('$view', array_except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
+                echo \$__env->make('$view', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->with{$expression}->render();
             }
             ?>";
         });
@@ -432,6 +367,12 @@ class TwillServiceProvider extends ServiceProvider
         $blade->directive('endpushonce', function () {
             return '<?php $__env->stopPush(); endif; ?>';
         });
+
+        $blade->component('twill::partials.form.utils._fieldset', 'formFieldset');
+        $blade->component('twill::partials.form.utils._columns', 'formColumns');
+        $blade->component('twill::partials.form.utils._collapsed_fields', 'formCollapsedFields');
+        $blade->component('twill::partials.form.utils._connected_ields', 'formConnectedFields');
+        $blade->component('twill::partials.form.utils._inline_checkboxes', 'formInlineCheckboxes');
     }
 
     /**
@@ -463,6 +404,8 @@ class TwillServiceProvider extends ServiceProvider
 
             return $view->with($with);
         });
+
+        View::composer(['admin.*', 'twill::*'], Localization::class);
     }
 
     /**

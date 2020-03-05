@@ -2,7 +2,7 @@
 
 namespace A17\Twill\Models\Behaviors;
 
-use Dimsav\Translatable\Translatable;
+use Astrotomic\Translatable\Translatable;
 use Illuminate\Database\Query\JoinClause;
 
 trait HasTranslation

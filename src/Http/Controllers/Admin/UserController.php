@@ -136,7 +136,7 @@ class UserController extends ModuleController
             'roleList' => Collection::make(UserRole::toArray()),
             'single_primary_nav' => [
                 'users' => [
-                    'title' => 'Users',
+                    'title' => twillTrans('twill::lang.user-management.users'),
                     'module' => true,
                 ],
             ],
@@ -154,35 +154,24 @@ class UserController extends ModuleController
     protected function formData($request)
     {
         $user = $this->authFactory->guard('twill_users')->user();
-        $with2faSettings = $this->config->get('twill.enabled.users-2fa') && $user->id == $request->route('user');;
+        $with2faSettings = $this->config->get('twill.enabled.users-2fa') && $user->id == $request->route('user');
 
         if ($with2faSettings) {
-            $google2fa = new Google2FA();
+            $user->generate2faSecretKey();
 
-            if (is_null($user->google_2fa_secret)) {
-                $secret = $google2fa->generateSecretKey();
-                $user->google_2fa_secret = \Crypt::encrypt($secret);
-                $user->save();
-            }
-
-            $qrCode = $google2fa->getQRCodeInline(
-                $this->config->get('app.name'),
-                $user->email,
-                \Crypt::decrypt($user->google_2fa_secret),
-                200
-            );
+            $qrCode = $user->get2faQrCode();
         }
 
         return [
             'roleList' => Collection::make(UserRole::toArray()),
             'single_primary_nav' => [
                 'users' => [
-                    'title' => 'Users',
+                    'title' => twillTrans('twill::lang.user-management.users'),
                     'module' => true,
                 ],
             ],
-            'customPublishedLabel' => 'Enabled',
-            'customDraftLabel' => 'Disabled',
+            'customPublishedLabel' => twillTrans('twill::lang.user-management.enabled'),
+            'customDraftLabel' => twillTrans('twill::lang.user-management.disabled'),
             'with2faSettings' => $with2faSettings,
             'qrCode' => $qrCode ?? null,
         ];
@@ -206,18 +195,18 @@ class UserController extends ModuleController
         $statusFilters = [];
 
         array_push($statusFilters, [
-            'name' => 'Active',
+            'name' => twillTrans('twill::lang.user-management.active'),
             'slug' => 'published',
             'number' => $this->repository->getCountByStatusSlug('published'),
         ], [
-            'name' => 'Disabled',
+            'name' => twillTrans('twill::lang.user-management.disabled'),
             'slug' => 'draft',
             'number' => $this->repository->getCountByStatusSlug('draft'),
         ]);
 
         if ($this->getIndexOption('restore')) {
             array_push($statusFilters, [
-                'name' => 'Trash',
+                'name' => twillTrans('twill::lang.user-management.trash'),
                 'slug' => 'trash',
                 'number' => $this->repository->getCountByStatusSlug('trash'),
             ]);

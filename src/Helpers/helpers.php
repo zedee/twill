@@ -139,8 +139,8 @@ if (!function_exists('make_twill_directory')) {
     function make_twill_directory($path, $recursive = true, $fs = null)
     {
         $fs = filled($fs)
-            ? $fs
-            : app(Filesystem::class);
+        ? $fs
+        : app(Filesystem::class);
 
         $path = twill_path($path);
 
@@ -159,8 +159,8 @@ if (!function_exists('twill_put_stub')) {
     function twill_put_stub($path, $stub, $fs = null)
     {
         $fs = filled($fs)
-            ? $fs
-            : app(Filesystem::class);
+        ? $fs
+        : app(Filesystem::class);
 
         $stub = str_replace(
             'namespace App\\',
@@ -168,7 +168,7 @@ if (!function_exists('twill_put_stub')) {
             $stub
         );
 
-        if ($fs->missing($path)) {
+        if (!$fs->exists($path)) {
             $fs->put($path, $stub);
         }
     }
@@ -189,4 +189,3 @@ if (!function_exists('fix_directory_separator')) {
         );
     }
 }
-
