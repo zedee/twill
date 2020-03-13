@@ -92,6 +92,8 @@ if (!isProd) {
 }
 
 const config = {
+  //Disable linter
+  useEslint: false,
   // Define base outputDir of build
   outputDir: outputDir,
   // Define root asset directory
