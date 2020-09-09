@@ -2,17 +2,17 @@
 {{-- Header --}}
 @slot('header')
 @component('twill::emails.html.header', ['url' => config('app.url')])
-# {{ config('app.name') }}
+# {{ config('app.name') }}&nbsp;<span class="envlabel envlabel--{{ app()->environment() }}">{{ app()->environment() }}</span>
 ## {{ $title ?? $actionText }}
 @endcomponent
 @endslot
 
 {{-- Body --}}
-Hola!
+{{ twillTrans('twill::lang.emails.hello') }}
 
 {{ $copy }}
 
-Cordialment,<br>
+{{ twillTrans('twill::lang.emails.regards') }}<br>
 {{ config('app.name') }}
 
 {{-- Button --}}
@@ -25,7 +25,7 @@ Cordialment,<br>
 {{-- Subcopy --}}
 @slot('subcopy')
 @component('twill::emails.html.subcopy')
-Si tens cap problema a l'hora d'apretar el botó de "{{ $actionText }}" , copia i enganxa aquesta URL al teu navegador: [{{ $url }}]({{ $url }})
+{{ twillTrans('twill::lang.emails.problems', ['actionText' => $actionText, 'url' => $url]) }}
 @endcomponent
 @endslot
 

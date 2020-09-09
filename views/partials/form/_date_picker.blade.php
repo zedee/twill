@@ -19,6 +19,8 @@
     @if ($required ?? false) :required="true" @endif
     @if ($inModal) :in-modal="true" @endif
     @if ($displayFormat) display-format="{{ $displayFormat }}" @endif
+    @if (isset($time24Hr)) time_24hr="{{ $time24Hr ? 'true' : 'false' }}" @endif
+    @if (isset($altFormat)) alt-format="{{ $altFormat }}" @endif
     in-store="date"
 ></a17-datepicker>
 

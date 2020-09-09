@@ -4,7 +4,6 @@ namespace A17\Twill\Notifications;
 
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Lang;
 
 class Reset extends ResetPassword
 {
@@ -17,11 +16,10 @@ class Reset extends ResetPassword
     public function toMail($notifiable)
     {
         return (new MailMessage)->markdown('twill::emails.html.email', [
-            'url' => url(request()->getScheme() . '://' . config('twill.admin_app_url') . route('admin.password.reset.form', $this->token, false)),
-            'actionText' => Lang::getFromJson('Reset Password Notification'),
-            'copy' => Lang::getFromJson('You are receiving this email because we received a password reset request for your account.') .
-                ' ' .
-                Lang::getFromJson('If you did not request a password reset, no further action is required.')
+
+            'url' => route('admin.password.reset.form', $this->token),
+            'actionText' => twillTrans('twill::lang.notifications.reset.action'),
+            'copy' => twillTrans('twill::lang.notifications.reset.content'),
         ]);
     }
 }

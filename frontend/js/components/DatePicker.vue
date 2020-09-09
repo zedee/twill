@@ -13,6 +13,7 @@
   import randKeyMixin from '@/mixins/randKey'
   import FormStoreMixin from '@/mixins/formStore'
   import InputframeMixin from '@/mixins/inputFrame'
+  import { locales, getCurrentLocale, isCurrentLocale24HrFormatted } from '@/utils/locale'
   import FlatPickr from 'flatpickr'
   import 'flatpickr/dist/flatpickr.css'
   import { Catalan } from 'flatpickr/dist/l10n/cat.js'
@@ -48,7 +49,11 @@
       },
       time_24hr: {
         type: Boolean,
-        default: false
+        default: isCurrentLocale24HrFormatted()
+      },
+      altFormat: {
+        type: String,
+        default: null
       },
       inline: {
         type: Boolean,
@@ -107,14 +112,21 @@
     computed: {
       uniqId: function (value) {
         return this.name + '-' + this.randKey
+      },
+      altFormatComputed: function () {
+        if (this.altFormat !== null) {
+          return this.altFormat
+        }
+        return 'F j, Y' + (this.enableTime ? (this.time_24hr || isCurrentLocale24HrFormatted() ? ' H:i' : ' h:i K') : '')
       }
     },
     methods: {
       config: function () {
         const self = this
-        return {
+        const config = {
           wrap: true,
           altInput: true,
+          altFormat: self.altFormatComputed,
           static: self.staticMode,
           appendTo: self.staticMode ? self.$refs[self.refs.flatPicker] : undefined,
           enableTime: self.enableTime,
@@ -147,6 +159,14 @@
             })
           }
         }
+
+        const locale = locales[getCurrentLocale()]
+
+        if (locale !== undefined && locale.hasOwnProperty('flatpickr')) {
+          config.locale = locale.flatpickr
+        }
+
+        return config
       },
       updateFromStore: function (newValue) { // called from the formStore mixin
         if (newValue !== this.date) {
